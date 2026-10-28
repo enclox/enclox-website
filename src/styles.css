@@ -99,7 +99,12 @@ main {
 }
 .line code { min-width: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
 .line code::before { content: '$ '; color: var(--amber); }
-.prompt code::after { content: ''; display: inline-block; width: .55em; height: 1em; margin-left: .3em; vertical-align: -.15em; background: var(--amber); animation: blink 1s steps(1) infinite; }
+.ghost {
+  flex: none; padding: .25rem .6rem;
+  background: var(--bg); border: 1px solid var(--line); color: var(--dim);
+  transition: color 150ms, border-color 150ms;
+}
+.ghost:hover { color: var(--amber); border-color: var(--amber-dim); }
 
 /* sections */
 section { padding: 4.5rem 0; border-top: 1px dashed var(--line); }

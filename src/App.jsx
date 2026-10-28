@@ -43,6 +43,8 @@ const YOU_HOST = [
   'Usage learning runs on your node by default',
 ]
 
+const INSTALL = 'curl -fsSL https://enclox.com/install.sh | sh'
+
 const PILLARS = [
   ['local', 'Apps, their data, and usage learning stay on your node, inside your network. Nothing leaves unless you allow it.'],
   ['self-hostable', 'Run the node on your hardware or your cloud account, and the control plane too if you want everything in-house.'],
@@ -81,6 +83,22 @@ function Logo() {
         </span>
       ))}
     </pre>
+  )
+}
+
+function Install() {
+  const [copied, setCopied] = useState(false)
+  const copy = () => {
+    navigator.clipboard.writeText(INSTALL).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    })
+  }
+  return (
+    <div className="line">
+      <code>{INSTALL}</code>
+      <button className="ghost" onClick={copy}>{copied ? 'copied' : 'copy'}</button>
+    </div>
   )
 }
 
@@ -218,7 +236,7 @@ export default function App() {
             Enclox learns where a team loses time, has an agent build the tool, deploys it behind the company login
             inside the company’s own network, and learns whether it helped.
           </p>
-          <div className="line prompt"><code>deploy ./weekly-tracker</code></div>
+          <Install />
         </div>
 
         <Section n={1} title="the problem" lede="Building a tool takes an hour. Knowing what to build, and whether it worked, still takes guesswork.">
