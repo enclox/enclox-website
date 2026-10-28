@@ -63,12 +63,12 @@ const STATS = [
 ]
 
 const TRACE = [
-  ['→', 'GET https://tracker.example.com/'],
+  ['→', 'POST https://scan.acme.example/  →  invoice-scanner'],
   ['·', 'rate limit ok  ·  logged'],
-  ['·', 'no warm VM for "weekly-tracker", restoring snapshot'],
-  ['·', 'VM ready'],
-  ['·', 'event → your app'],
-  ['←', '200 OK'],
+  ['·', 'no warm VM for "invoice-scanner", restoring snapshot'],
+  ['·', 'GET invoices/inv-0412.jpg  as role invoice-scanner'],
+  ['·', 'PUT invoices/inv-0412.json'],
+  ['←', '200 OK  Acme Supplies · $1,240.00'],
 ]
 
 const STAGES = [
@@ -91,67 +91,35 @@ function Logo() {
   )
 }
 
-// Inside one node, simplified. Boxes are [x, y, label, detail] in a 880×430 viewBox, each 150×44.
-const NODES = {
-  web: [10, 50, 'browser', 'your users'],
-  cli: [10, 170, 'console / CLI', 'signed requests'],
-  pub: [205, 50, 'public entry', 'every request logged'],
-  rate: [375, 50, 'rate limit', 'per client'],
-  url: [545, 50, 'app address', 'on your domain'],
-  store: [715, 50, 'storage', 'on your disk'],
-  admin: [205, 170, 'admin entry', 'private by default'],
-  auth: [375, 170, 'identity', 'policy per action'],
-  svc: [545, 170, 'services', 'apps, buckets, data'],
-  pool: [715, 170, 'warm pool', 'fast starts'],
-  boot: [375, 350, 'your app', 'the code you deploy'],
-  rt: [545, 350, 'runtime', 'hands over events'],
-  agent: [715, 350, 'guest agent', 'the only door'],
-}
-// [node, caption]: one request into an app that reads a bucket file, then one signed admin call.
-const FLOW = [
-  ['web', 'A request arrives at an app’s address.'],
-  ['pub', 'The public entry logs it,'],
-  ['rate', 'and limits how fast each client can call.'],
-  ['url', 'The address names an app, which takes a concurrency slot.'],
-  ['pool', 'A warm microVM is ready, or one starts from a snapshot taken after init.'],
-  ['agent', 'The node hands the request into the VM over a sealed channel.'],
-  ['rt', 'The guest agent passes it to the runtime,'],
-  ['boot', 'and your app handles it. The VM has no network of its own.'],
-  ['agent', 'To read a file from a bucket, the app asks the guest agent,'],
-  ['svc', 'which reaches the node as the app’s own role. There are no keys in your code.'],
-  ['store', 'The role’s policy is checked, then the file is read from your disk.'],
-  ['web', 'The response goes back out the way it came.'],
-  ['cli', 'An admin call from the console or CLI, signed with an access key.'],
-  ['admin', 'The admin entry is private to the machine by default.'],
-  ['auth', 'The signature names the caller; policies allow or deny each action.'],
-  ['svc', 'The service handles it,'],
-  ['store', 'and the data stays on your disk.'],
-]
-// Lines between the boxes the flow passes through.
-const EDGES = [['web', 'pub'], ['pub', 'rate'], ['rate', 'url'], ['url', 'pool'], ['pool', 'agent'], ['agent', 'rt'], ['rt', 'boot'],
-  ['agent', 'svc'], ['svc', 'store'], ['cli', 'admin'], ['admin', 'auth'], ['auth', 'svc']]
-
-// Planned: several nodes, each with a role, behind a gateway that routes by what a request needs.
+// Planned: nodes with roles behind a gateway. Boxes are [x, y, label, detail] in an 880×420 viewBox.
 const CLUSTER = {
-  client: [10, 128, 'requests', 'from users and apps'],
-  gateway: [300, 128, 'gateway', 'reads each request'],
-  app: [705, 34, 'app node', 'apps in microVMs'],
-  storage: [705, 128, 'storage node', 'buckets on big disks'],
-  inference: [705, 222, 'inference node', 'GPUs, models loaded'],
+  client: [10, 200, 'requests', 'users, apps, scripts'],
+  gateway: [205, 200, 'gateway', 'routes by request'],
+  pool: [410, 110, 'warm pool', 'fast starts'],
+  tracker: [610, 40, 'weekly-tracker', 'own microVM'],
+  bot: [610, 110, 'support-bot', 'own microVM'],
+  scanner: [610, 180, 'invoice-scanner', 'own microVM'],
+  buckets: [420, 330, 'buckets', 'invoices, reports'],
+  models: [690, 330, 'models', 'ocr-small, chat'],
 }
+// One invoice-scanner request through the nodes, then a direct download.
 const CLUSTER_FLOW = [
-  ['client', 'A page or an API call comes in.'],
-  ['gateway', 'The gateway reads what the request asks for, and picks a node:'],
-  ['app', 'here an app node, which runs it in a microVM.'],
-  ['storage', 'When the app needs a bucket file, it reaches the storage node directly, still as its own role.'],
-  ['client', 'A large upload or download comes in.'],
-  ['gateway', 'It is about files, so the gateway sends it'],
-  ['storage', 'straight to a storage node, without tying up an app.'],
-  ['client', 'A call to a model comes in.'],
-  ['gateway', 'It needs a GPU, so it goes'],
-  ['inference', 'to an inference node that keeps the model loaded.'],
+  ['client', 'POST scan.acme.example: finance uploads an invoice to invoice-scanner.'],
+  ['gateway', 'The gateway sees an app request and routes it to an app node.'],
+  ['pool', 'invoice-scanner has a warm microVM there, or one restores from its snapshot.'],
+  ['scanner', 'The request runs in invoice-scanner’s own microVM. Other apps can’t see into it.'],
+  ['buckets', 'It fetches inv-0412.jpg from the invoices bucket on a storage node, as its own role.'],
+  ['scanner', 'The scan comes back to the app.'],
+  ['models', 'It sends the scan to ocr-small on an inference node, where the model stays loaded on a GPU,'],
+  ['scanner', 'and gets back the vendor, date and total.'],
+  ['buckets', 'It saves inv-0412.json next to the scan.'],
+  ['client', '200 OK: Acme Supplies, 2026-10-12, $1,240.00.'],
+  ['client', 'Next, someone downloads last quarter’s report.'],
+  ['gateway', 'It is a file transfer, so the gateway skips the app node'],
+  ['buckets', 'and streams reports/2026-q3.pdf from the storage node.'],
 ]
-const CLUSTER_EDGES = [['client', 'gateway'], ['gateway', 'app'], ['gateway', 'storage'], ['gateway', 'inference'], ['app', 'storage']]
+const CLUSTER_EDGES = [['client', 'gateway'], ['gateway', 'pool'], ['gateway', 'buckets'], ['gateway', 'models'],
+  ['pool', 'tracker'], ['pool', 'bot'], ['pool', 'scanner'], ['scanner', 'buckets'], ['scanner', 'models']]
 
 // An SVG of 150×44 boxes ({id: [x, y, label, detail]}) and the lines between them, with a dot that
 // steps through `flow` ([box id, caption]) and a caption for each step. `children` draws behind the boxes.
@@ -294,26 +262,21 @@ export default function App() {
             We see metadata only: who deployed, who opened what, and when. Early pilots run on a node we host and move
             in-house later.
           </p>
-          <h3 className="sub">inside a node</h3>
-          <Diagram nodes={NODES} flow={FLOW} edges={EDGES} height={430}
-            label="Inside a node: requests reach a public or an admin entry, pass rate limiting or identity and policy checks, and reach the services and storage. Apps run in microVMs from a warm pool, reached only through a guest agent, and read bucket files as their own role.">
-            <rect className="frame-box" x="190" y="20" width="685" height="230" />
-            <text className="frame-label" x="200" y="38">your node · one enclox process</text>
-            <rect className="frame-box" x="360" y="320" width="515" height="100" />
-            <text className="frame-label" x="370" y="338">microVM · one per app</text>
-            <text className="edge-label" x="818" y="285">in ↓</text>
-            <text className="edge-label" x="640" y="285">out ↑</text>
-          </Diagram>
           <h3 className="sub">many nodes <span className="tag">planned</span></h3>
           <p className="note sub-lede">
-            Add nodes as you grow, each with a role: apps, storage, or inference. A gateway routes every request by what
-            it needs, so file transfers don’t tie up apps and model calls land where the GPUs are. Today one node runs
-            everything.
+            Add nodes as you grow, each with a role: apps, storage, or inference. Every app runs in its own microVM on an
+            app node, and reaches buckets and models by making a request, as its own role. A gateway routes each request
+            by what it needs. Today one node runs apps and buckets.
           </p>
-          <Diagram nodes={CLUSTER} flow={CLUSTER_FLOW} edges={CLUSTER_EDGES} height={300}
-            label="Planned: requests reach a gateway, which routes pages and API calls to an app node, file transfers to a storage node, and model calls to an inference node. Apps reach the storage node directly as their own role.">
-            <rect className="frame-box" x="690" y="6" width="185" height="288" />
-            <text className="frame-label" x="700" y="24">your nodes</text>
+          <Diagram nodes={CLUSTER} flow={CLUSTER_FLOW} edges={CLUSTER_EDGES} height={420}
+            label="Planned: an invoice-scanner request reaches the gateway, runs in invoice-scanner's own microVM on an app node, reads the scan from a bucket on a storage node, asks an OCR model on an inference node, saves the result and responds. A file download goes from the gateway straight to the storage node.">
+            <rect className="frame-box" x="395" y="14" width="480" height="236" />
+            <text className="frame-label" x="405" y="32">app node</text>
+            {[40, 110, 180].map(y => <rect key={y} className="frame-box vm" x="602" y={y - 8} width="166" height="60" />)}
+            <rect className="frame-box" x="395" y="290" width="250" height="110" />
+            <text className="frame-label" x="405" y="308">storage node</text>
+            <rect className="frame-box" x="665" y="290" width="210" height="110" />
+            <text className="frame-label" x="675" y="308">inference node</text>
           </Diagram>
         </Section>
 
