@@ -147,20 +147,19 @@ h2::after { content: ''; flex: 1; border-bottom: 1px solid var(--line); transfor
 .stats span { font: .75rem var(--mono); color: var(--dim); }
 
 .sub { margin: 3rem 0 1rem; font-size: .8rem; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
-.sub .tag { margin-left: .6rem; translate: none; vertical-align: .1em; letter-spacing: .06em; text-transform: none; }
 .sub-lede { margin: -.25rem 0 1rem; }
 .diagram { margin: 0; border: 1px solid var(--line); background: var(--raised); }
 .diagram-scroll { overflow-x: auto; }
 .diagram svg { display: block; width: 100%; min-width: 640px; height: auto; font-family: var(--mono); }
 .frame-box { fill: none; stroke: var(--line-strong); stroke-dasharray: 4 4; }
 .frame-label { fill: var(--dim); font-size: 11px; letter-spacing: .08em; }
-.edge { stroke: var(--line-strong); stroke-width: 1; }
+.edge { fill: none; stroke: var(--line-strong); stroke-width: 1; }
 .frame-box.vm { stroke: var(--line); }
 .node rect { fill: var(--bg); stroke: var(--line-strong); transition: stroke 300ms, fill 300ms; }
 .node-label { fill: var(--fg); font-size: 12.5px; font-weight: 600; }
 .node-detail { fill: var(--dim); font-size: 10.5px; }
-.node.on rect { stroke: var(--amber); fill: color-mix(in oklab, var(--amber) 8%, var(--bg)); }
-.packet { fill: var(--amber); filter: drop-shadow(0 0 6px rgb(245 165 36 / .7)); transition: transform 900ms var(--ease); }
+.node.on rect { stroke: var(--amber); stroke-width: 1.5; fill: color-mix(in oklab, var(--amber) 14%, var(--bg)); filter: drop-shadow(0 0 8px rgb(245 165 36 / .35)); }
+.node.on .node-label { fill: var(--amber); }
 .diagram figcaption {
   display: flex; gap: .9rem; align-items: baseline;
   padding: .9rem 1.1rem; border-top: 1px solid var(--line);

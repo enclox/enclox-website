@@ -118,11 +118,21 @@ const CLUSTER_FLOW = [
   ['gateway', 'It is a file transfer, so the gateway skips the app node'],
   ['buckets', 'and streams reports/2026-q3.pdf from the storage node.'],
 ]
-const CLUSTER_EDGES = [['client', 'gateway'], ['gateway', 'pool'], ['gateway', 'buckets'], ['gateway', 'models'],
-  ['pool', 'tracker'], ['pool', 'bot'], ['pool', 'scanner'], ['scanner', 'buckets'], ['scanner', 'models']]
+// [from, to, ...corners]: right-angled lines that run through the gaps between boxes, so none cross.
+const CLUSTER_EDGES = [
+  ['client', 'gateway'],
+  ['gateway', 'pool', [380, 222], [380, 132]],
+  ['gateway', 'buckets', [280, 352]],
+  ['gateway', 'models', [280, 410], [765, 410]],
+  ['pool', 'tracker', [585, 132], [585, 62]],
+  ['pool', 'bot'],
+  ['pool', 'scanner', [585, 132], [585, 202]],
+  ['scanner', 'buckets', [685, 270], [495, 270]],
+  ['scanner', 'models', [800, 202], [800, 352]],
+]
 
-// An SVG of 150×44 boxes ({id: [x, y, label, detail]}) and the lines between them, with a dot that
-// steps through `flow` ([box id, caption]) and a caption for each step. `children` draws behind the boxes.
+// An SVG of 150×44 boxes ({id: [x, y, label, detail]}) and the lines between them, which highlights
+// each box of `flow` ([box id, caption]) in turn with its caption. `children` draws behind the boxes.
 function Diagram({ nodes, flow, edges, height, label, children }) {
   const [step, setStep] = useState(0)
   useEffect(() => {
@@ -132,16 +142,14 @@ function Diagram({ nodes, flow, edges, height, label, children }) {
   }, [step, flow.length])
   const center = (id) => [nodes[id][0] + 75, nodes[id][1] + 22]
   const [node, caption] = flow[step]
-  const [dx, dy] = center(node)
   return (
     <figure className="diagram">
       <div className="diagram-scroll">
         <svg viewBox={`0 0 880 ${height}`} role="img" aria-label={label}>
           {children}
-          {edges.map(([a, b]) => {
-            const [x1, y1] = center(a), [x2, y2] = center(b)
-            return <line key={a + b} className="edge" x1={x1} y1={y1} x2={x2} y2={y2} />
-          })}
+          {edges.map(([a, b, ...corners]) => (
+            <polyline key={a + b} className="edge" points={[center(a), ...corners, center(b)].join(' ')} />
+          ))}
           {Object.entries(nodes).map(([id, [x, y, text, detail]]) => (
             <g key={id} className={id === node ? 'node on' : 'node'}>
               <rect x={x} y={y} width="150" height="44" />
@@ -149,7 +157,6 @@ function Diagram({ nodes, flow, edges, height, label, children }) {
               <text className="node-detail" x={x + 12} y={y + 35}>{detail}</text>
             </g>
           ))}
-          <circle className="packet" r="6" style={{ transform: `translate(${dx}px, ${dy}px)` }} />
         </svg>
       </div>
       <figcaption><span className="idx">{String(step + 1).padStart(2, '0')}</span>{caption}</figcaption>
@@ -262,13 +269,13 @@ export default function App() {
             We see metadata only: who deployed, who opened what, and when. Early pilots run on a node we host and move
             in-house later.
           </p>
-          <h3 className="sub">many nodes <span className="tag">planned</span></h3>
+          <h3 className="sub">many nodes</h3>
           <p className="note sub-lede">
             Add nodes as you grow, each with a role: apps, storage, or inference. Every app runs in its own microVM on an
             app node, and reaches buckets and models by making a request, as its own role. A gateway routes each request
             by what it needs. Today one node runs apps and buckets.
           </p>
-          <Diagram nodes={CLUSTER} flow={CLUSTER_FLOW} edges={CLUSTER_EDGES} height={420}
+          <Diagram nodes={CLUSTER} flow={CLUSTER_FLOW} edges={CLUSTER_EDGES} height={430}
             label="Planned: an invoice-scanner request reaches the gateway, runs in invoice-scanner's own microVM on an app node, reads the scan from a bucket on a storage node, asks an OCR model on an inference node, saves the result and responds. A file download goes from the gateway straight to the storage node.">
             <rect className="frame-box" x="395" y="14" width="480" height="236" />
             <text className="frame-label" x="405" y="32">app node</text>
