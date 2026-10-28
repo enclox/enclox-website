@@ -49,6 +49,13 @@ const PILLARS = [
   ['completely manageable', 'Every app, user, permission, and network rule is yours to inspect and change, with an audit log and a kill switch.'],
 ]
 
+// What an app can do with bucket files, without keys in its code.
+const FILES = [
+  ['from inside an app', 'An app reads and writes bucket files as its own role, through the node. There are no keys in its code; its policy decides which buckets and paths it may touch, and revoking the role cuts off running apps at once.'],
+  ['shared by link', 'Hand someone a signed link to one file. It expires on its own, and they need no account.'],
+  ['served as a website', 'Point a domain at a bucket and it serves a built site, client-side routes included.'],
+]
+
 const STATS = [
   ['~0.7s', 'microVM boot'],
   ['~4ms', 'to run a function'],
@@ -56,12 +63,12 @@ const STATS = [
 ]
 
 const TRACE = [
-  ['→', 'GET /fn/7f3a…/  (Function URL, AuthType NONE)'],
-  ['·', 'rate_limit ok  ·  access_log'],
-  ['·', 'pool: no warm vm for "weekly-tracker", restoring snapshot'],
-  ['·', 'jailer → firecracker  ·  agent ready on vsock:1000'],
-  ['·', 'POST /invoke  →  /var/task/bootstrap'],
-  ['←', '200 OK  x-enclox-requestid: 4c1e…'],
+  ['→', 'GET https://tracker.example.com/'],
+  ['·', 'rate limit ok  ·  logged'],
+  ['·', 'no warm VM for "weekly-tracker", restoring snapshot'],
+  ['·', 'VM ready'],
+  ['·', 'event → your app'],
+  ['←', '200 OK'],
 ]
 
 const STAGES = [
@@ -84,77 +91,93 @@ function Logo() {
   )
 }
 
-// Inside one node, after the big-picture diagram in self-host-AWS docs/code-flow.md.
-// Boxes are [x, y, label, detail] in a 880×430 viewBox, each 150×44.
+// Inside one node, simplified. Boxes are [x, y, label, detail] in a 880×430 viewBox, each 150×44.
 const NODES = {
-  web: [10, 50, 'browser / curl', 'via your TLS proxy'],
-  cli: [10, 170, 'enclox-api', 'signed requests'],
-  pub: [205, 50, 'public listener', 'access log'],
-  rate: [375, 50, 'rate limit', 'per client IP'],
-  url: [545, 50, 'Function URL', 'or custom domain'],
-  store: [715, 50, 'SQLite + blobs', 'in DATA_DIR'],
-  admin: [205, 170, 'admin listener', '127.0.0.1:4566'],
-  auth: [375, 170, 'SigV4 + IAM', 'policy per action'],
-  svc: [545, 170, 'services', 'APIs + state KV'],
-  pool: [715, 170, 'warm pool', 'snapshot clones'],
-  boot: [375, 350, 'bootstrap', 'your function'],
-  rt: [545, 350, 'Runtime API', '127.0.0.1:9001'],
-  agent: [715, 350, 'agent · PID 1', 'vsock 1000 / 1001'],
+  web: [10, 50, 'browser', 'your users'],
+  cli: [10, 170, 'console / CLI', 'signed requests'],
+  pub: [205, 50, 'public entry', 'every request logged'],
+  rate: [375, 50, 'rate limit', 'per client'],
+  url: [545, 50, 'app address', 'on your domain'],
+  store: [715, 50, 'storage', 'on your disk'],
+  admin: [205, 170, 'admin entry', 'private by default'],
+  auth: [375, 170, 'identity', 'policy per action'],
+  svc: [545, 170, 'services', 'apps, buckets, data'],
+  pool: [715, 170, 'warm pool', 'fast starts'],
+  boot: [375, 350, 'your app', 'the code you deploy'],
+  rt: [545, 350, 'runtime', 'hands over events'],
+  agent: [715, 350, 'guest agent', 'the only door'],
 }
-const center = (id) => [NODES[id][0] + 75, NODES[id][1] + 22]
-
-// [node, caption]: one Function URL request into a microVM and back, then one signed admin call.
+// [node, caption]: one request into an app that reads a bucket file, then one signed admin call.
 const FLOW = [
-  ['web', 'A request arrives on a Function URL from the internet.'],
-  ['pub', 'The public listener logs it,'],
-  ['rate', 'and rate-limits each client IP.'],
-  ['url', 'The URL names a function, which takes a concurrency slot.'],
-  ['pool', 'The pool lends a warm microVM, or restores one from its post-init snapshot.'],
-  ['agent', 'Over vsock port 1000, the host asks the agent, PID 1 in the VM, to invoke.'],
-  ['rt', 'The agent queues the event on the Lambda Runtime API,'],
-  ['boot', 'and your bootstrap picks it up. The VM has no network device.'],
-  ['agent', 'To read its state, the function goes back through the agent, out on vsock port 1001,'],
-  ['svc', 'to a socket only this VM can open: identity comes from the transport, never the payload.'],
-  ['store', 'Its keys, like everything else, live in SQLite on your disk.'],
+  ['web', 'A request arrives at an app’s address.'],
+  ['pub', 'The public entry logs it,'],
+  ['rate', 'and limits how fast each client can call.'],
+  ['url', 'The address names an app, which takes a concurrency slot.'],
+  ['pool', 'A warm microVM is ready, or one starts from a snapshot taken after init.'],
+  ['agent', 'The node hands the request into the VM over a sealed channel.'],
+  ['rt', 'The guest agent passes it to the runtime,'],
+  ['boot', 'and your app handles it. The VM has no network of its own.'],
+  ['agent', 'To read a file from a bucket, the app asks the guest agent,'],
+  ['svc', 'which reaches the node as the app’s own role. There are no keys in your code.'],
+  ['store', 'The role’s policy is checked, then the file is read from your disk.'],
   ['web', 'The response goes back out the way it came.'],
-  ['cli', 'An admin call, signed with an access key.'],
-  ['admin', 'The admin listener is on 127.0.0.1 unless you choose otherwise.'],
-  ['auth', 'SigV4 names the caller; IAM policies allow or deny each action.'],
-  ['svc', 'IAM, Buckets or Lambda handles it,'],
-  ['store', 'and writes to the same SQLite and blob files.'],
+  ['cli', 'An admin call from the console or CLI, signed with an access key.'],
+  ['admin', 'The admin entry is private to the machine by default.'],
+  ['auth', 'The signature names the caller; policies allow or deny each action.'],
+  ['svc', 'The service handles it,'],
+  ['store', 'and the data stays on your disk.'],
 ]
 // Lines between the boxes the flow passes through.
 const EDGES = [['web', 'pub'], ['pub', 'rate'], ['rate', 'url'], ['url', 'pool'], ['pool', 'agent'], ['agent', 'rt'], ['rt', 'boot'],
   ['agent', 'svc'], ['svc', 'store'], ['cli', 'admin'], ['admin', 'auth'], ['auth', 'svc']]
 
-function NodeDiagram() {
+// Planned: several nodes, each with a role, behind a gateway that routes by what a request needs.
+const CLUSTER = {
+  client: [10, 128, 'requests', 'from users and apps'],
+  gateway: [300, 128, 'gateway', 'reads each request'],
+  app: [705, 34, 'app node', 'apps in microVMs'],
+  storage: [705, 128, 'storage node', 'buckets on big disks'],
+  inference: [705, 222, 'inference node', 'GPUs, models loaded'],
+}
+const CLUSTER_FLOW = [
+  ['client', 'A page or an API call comes in.'],
+  ['gateway', 'The gateway reads what the request asks for, and picks a node:'],
+  ['app', 'here an app node, which runs it in a microVM.'],
+  ['storage', 'When the app needs a bucket file, it reaches the storage node directly, still as its own role.'],
+  ['client', 'A large upload or download comes in.'],
+  ['gateway', 'It is about files, so the gateway sends it'],
+  ['storage', 'straight to a storage node, without tying up an app.'],
+  ['client', 'A call to a model comes in.'],
+  ['gateway', 'It needs a GPU, so it goes'],
+  ['inference', 'to an inference node that keeps the model loaded.'],
+]
+const CLUSTER_EDGES = [['client', 'gateway'], ['gateway', 'app'], ['gateway', 'storage'], ['gateway', 'inference'], ['app', 'storage']]
+
+// An SVG of 150×44 boxes ({id: [x, y, label, detail]}) and the lines between them, with a dot that
+// steps through `flow` ([box id, caption]) and a caption for each step. `children` draws behind the boxes.
+function Diagram({ nodes, flow, edges, height, label, children }) {
   const [step, setStep] = useState(0)
   useEffect(() => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const t = setTimeout(() => setStep(s => (s + 1) % FLOW.length), 1900)
+    const t = setTimeout(() => setStep(s => (s + 1) % flow.length), 1900)
     return () => clearTimeout(t)
-  }, [step])
-  const [node, caption] = FLOW[step]
+  }, [step, flow.length])
+  const center = (id) => [nodes[id][0] + 75, nodes[id][1] + 22]
+  const [node, caption] = flow[step]
   const [dx, dy] = center(node)
   return (
     <figure className="diagram">
       <div className="diagram-scroll">
-        <svg viewBox="0 0 880 430" role="img"
-          aria-label="Inside a node: requests reach a public or an admin listener, pass rate limiting or SigV4 and IAM checks, and reach the services and storage. Functions run in microVMs from a warm pool; the host talks to the agent inside each VM over vsock, and the agent hands events to your bootstrap.">
-          <rect className="frame-box" x="190" y="20" width="685" height="230" />
-          <text className="frame-label" x="200" y="38">host · one enclox process</text>
-          <rect className="frame-box" x="360" y="320" width="515" height="100" />
-          <text className="frame-label" x="370" y="338">microVM · Firecracker + jailer, one per app</text>
-          {EDGES.map(([a, b]) => {
+        <svg viewBox={`0 0 880 ${height}`} role="img" aria-label={label}>
+          {children}
+          {edges.map(([a, b]) => {
             const [x1, y1] = center(a), [x2, y2] = center(b)
             return <line key={a + b} className="edge" x1={x1} y1={y1} x2={x2} y2={y2} />
           })}
-          <text className="edge-label" x="800" y="285">vsock 1000 ↓</text>
-          <text className="edge-label" x="625" y="285">vsock 1001 ↑</text>
-          {Object.entries(NODES).map(([id, [x, y, label, detail]]) => (
+          {Object.entries(nodes).map(([id, [x, y, text, detail]]) => (
             <g key={id} className={id === node ? 'node on' : 'node'}>
               <rect x={x} y={y} width="150" height="44" />
-              <text className="node-label" x={x + 12} y={y + 19}>{label}</text>
+              <text className="node-label" x={x + 12} y={y + 19}>{text}</text>
               <text className="node-detail" x={x + 12} y={y + 35}>{detail}</text>
             </g>
           ))}
@@ -176,7 +199,7 @@ function Trace() {
   }, [n])
   return (
     <div className="term">
-      <div className="term-bar"><span>node</span><span>public listener · :443</span></div>
+      <div className="term-bar"><span>node</span><span>https</span></div>
       <ol>
         {TRACE.map(([mark, text], i) => (
           <li key={i} className={i < n ? 'on' : ''}>
@@ -272,7 +295,26 @@ export default function App() {
             in-house later.
           </p>
           <h3 className="sub">inside a node</h3>
-          <NodeDiagram />
+          <Diagram nodes={NODES} flow={FLOW} edges={EDGES} height={430}
+            label="Inside a node: requests reach a public or an admin entry, pass rate limiting or identity and policy checks, and reach the services and storage. Apps run in microVMs from a warm pool, reached only through a guest agent, and read bucket files as their own role.">
+            <rect className="frame-box" x="190" y="20" width="685" height="230" />
+            <text className="frame-label" x="200" y="38">your node · one enclox process</text>
+            <rect className="frame-box" x="360" y="320" width="515" height="100" />
+            <text className="frame-label" x="370" y="338">microVM · one per app</text>
+            <text className="edge-label" x="818" y="285">in ↓</text>
+            <text className="edge-label" x="640" y="285">out ↑</text>
+          </Diagram>
+          <h3 className="sub">many nodes <span className="tag">planned</span></h3>
+          <p className="note sub-lede">
+            Add nodes as you grow, each with a role: apps, storage, or inference. A gateway routes every request by what
+            it needs, so file transfers don’t tie up apps and model calls land where the GPUs are. Today one node runs
+            everything.
+          </p>
+          <Diagram nodes={CLUSTER} flow={CLUSTER_FLOW} edges={CLUSTER_EDGES} height={300}
+            label="Planned: requests reach a gateway, which routes pages and API calls to an app node, file transfers to a storage node, and model calls to an inference node. Apps reach the storage node directly as their own role.">
+            <rect className="frame-box" x="690" y="6" width="185" height="288" />
+            <text className="frame-label" x="700" y="24">your nodes</text>
+          </Diagram>
         </Section>
 
         <Section n={5} title="the node" lede="Every app is sealed in its own Firecracker microVM, with its own user, a memory cap, and no network.">
@@ -282,6 +324,15 @@ export default function App() {
             ))}
           </ul>
           <Trace />
+          <h3 className="sub">files from buckets</h3>
+          <ul className="grid">
+            {FILES.map(([name, text]) => (
+              <li key={name}>
+                <h3>{name}</h3>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ul>
         </Section>
 
         <Section n={6} title="where this goes" lede="From a place to run AI-built apps to a layer that learns what a company needs.">
