@@ -43,6 +43,12 @@ const YOU_HOST = [
   'Usage learning runs on your node by default',
 ]
 
+const PILLARS = [
+  ['local', 'Apps, their data, and usage learning stay on your node, inside your network. Nothing leaves unless you allow it.'],
+  ['self-hostable', 'Run the node on your hardware or your cloud account, and the control plane too if you want everything in-house.'],
+  ['completely manageable', 'Every app, user, permission, and network rule is yours to inspect and change, with an audit log and a kill switch.'],
+]
+
 const STATS = [
   ['~0.7s', 'microVM boot'],
   ['~4ms', 'to run a function'],
@@ -157,7 +163,18 @@ export default function App() {
           </ol>
         </Section>
 
-        <Section n={3} title="how it works" lede="We run the control plane. You run the compute.">
+        <Section n={3} title="yours to run" lede="Local, self-hostable, and completely manageable.">
+          <ul className="grid">
+            {PILLARS.map(([name, text]) => (
+              <li key={name}>
+                <h3>{name}</h3>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ul>
+        </Section>
+
+        <Section n={4} title="how it works" lede="By default we run the control plane and you run the compute. Or run all of it yourself.">
           <div className="split" id="how">
             <div>
               <h3>we host</h3>
@@ -174,7 +191,7 @@ export default function App() {
           </p>
         </Section>
 
-        <Section n={4} title="the node" lede="Every app is sealed in its own Firecracker microVM, with its own user, a memory cap, and no network.">
+        <Section n={5} title="the node" lede="Every app is sealed in its own Firecracker microVM, with its own user, a memory cap, and no network.">
           <ul className="stats">
             {STATS.map(([value, label]) => (
               <li key={label}><b>{value}</b><span>{label}</span></li>
@@ -183,7 +200,7 @@ export default function App() {
           <Trace />
         </Section>
 
-        <Section n={5} title="where this goes" lede="From a place to run AI-built apps to a layer that learns what a company needs.">
+        <Section n={6} title="where this goes" lede="From a place to run AI-built apps to a layer that learns what a company needs.">
           <ol className="grid loop four">
             {STAGES.map(([stage, text], i) => (
               <li key={stage}>
