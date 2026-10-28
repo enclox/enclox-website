@@ -12,40 +12,58 @@ const LOGO = [
   '╚══════╝╚═╝  ╚═══╝ ╚═════╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝',
 ]
 
-const INSTALL = {
-  build: `git clone ${REPO} && cd self-host-AWS && cargo build --release`,
-  run: 'cargo run   # creates root and prints its access key',
-  deploy: 'bash scripts/deploy.sh homepage',
-}
+const PROBLEMS = [
+  ['Teams don’t know what to build', 'Time sinks are visible only to the people living them. Nobody reads the pattern across the team.'],
+  ['Tools stall at sharing', 'A builder’s tool lives on a laptop or a personal account. Colleagues can’t open it safely, and IT can’t see it.'],
+  ['Nobody learns what worked', 'Tools get abandoned with no record of whether they helped, so the next one is built blind.'],
+]
 
-const SERVICES = [
-  ['iam', 'Users, access keys, managed policies. Every request is signed and checked against the caller’s policies.'],
-  ['buckets', 'Object storage on SQLite and plain blobs. Multipart uploads, streamed reads, presigned URLs.'],
-  ['functions', 'Each invocation runs in a Firecracker microVM, restored from a snapshot taken after init.'],
-  ['urls', 'Public Function URLs with CORS, per-IP rate limits, reserved concurrency and custom domains.'],
-  ['schedules', 'Cron and rate expressions that invoke functions on time.'],
-  ['console', 'A local-only web console for functions, buckets, domains and applications.'],
+// [step, text, status]
+const LOOP = [
+  ['see', 'Learns where a team’s time goes, from usage metadata the company chooses to share.', 'designed'],
+  ['build', 'An agent builds the tool, and one command deploys it.', 'runtime built'],
+  ['share', 'Deploys inside the company’s network behind its login, and shares with the people who need it most.', 'next'],
+  ['learn', 'Reads usage and feedback to judge whether the tool helped, then shares it wider or retires it.', 'designed'],
+]
+
+const WE_HOST = [
+  'Login with Google or Microsoft',
+  'App directory and sharing',
+  'Relay for access from anywhere',
+  'Audit log and kill switch',
+  'Signed updates and patches',
+  'Recommendations from usage metadata only',
+]
+
+const YOU_HOST = [
+  'A node on your hardware or cloud account',
+  'Each app in its own microVM',
+  'No network by default, with an approved list',
+  'Each app’s data on your node',
+  'Usage learning runs on your node by default',
+]
+
+const STATS = [
+  ['~0.7s', 'microVM boot'],
+  ['~4ms', 'to run a function'],
+  ['1', 'microVM per app'],
 ]
 
 const TRACE = [
   ['→', 'GET /fn/7f3a…/  (Function URL, AuthType NONE)'],
   ['·', 'rate_limit ok  ·  access_log'],
-  ['·', 'pool: no warm vm for "hello", restoring snapshot'],
+  ['·', 'pool: no warm vm for "weekly-tracker", restoring snapshot'],
   ['·', 'jailer → firecracker  ·  agent ready on vsock:1000'],
   ['·', 'POST /invoke  →  /var/task/bootstrap'],
   ['←', '200 OK  x-enclox-requestid: 4c1e…'],
 ]
 
-const HANDLER = `use enclox_runtime::{Error, Event};
-use serde_json::{json, Value};
-
-fn handler(event: Event) -> Result<Value, Error> {
-    Ok(json!({ "echo": event.payload, "request_id": event.request_id }))
-}
-
-fn main() -> Result<(), Error> {
-    enclox_runtime::run(handler)
-}`
+const STAGES = [
+  ['run', 'Deploy, share, and govern apps built with any agent.'],
+  ['learn', 'With consent, usage metadata shows where teams lose time and which tools earn their keep.'],
+  ['build', 'Enclox proposes the next tool, has an agent build it, and shares it with the people who need it.'],
+  ['agents', 'Scheduled agents run in the same isolated place, with scoped credentials and an audit trail.'],
+]
 
 function Logo() {
   return (
@@ -60,32 +78,6 @@ function Logo() {
   )
 }
 
-function Install() {
-  const [tab, setTab] = useState('build')
-  const [copied, setCopied] = useState(false)
-  const copy = () => {
-    navigator.clipboard.writeText(INSTALL[tab]).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1200)
-    })
-  }
-  return (
-    <div className="install">
-      <div className="tabs" role="tablist">
-        {Object.keys(INSTALL).map((k, i) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
-            <span className="n">{i + 1}</span> {k}
-          </button>
-        ))}
-      </div>
-      <div className="line">
-        <code>{INSTALL[tab]}</code>
-        <button className="ghost" onClick={copy}>{copied ? 'copied' : 'copy'}</button>
-      </div>
-    </div>
-  )
-}
-
 function Trace() {
   // Reveal one line at a time, then hold and loop.
   const [n, setN] = useState(0)
@@ -96,7 +88,7 @@ function Trace() {
   }, [n])
   return (
     <div className="term">
-      <div className="term-bar"><span>enclox</span><span>public listener · :443</span></div>
+      <div className="term-bar"><span>node</span><span>public listener · :443</span></div>
       <ol>
         {TRACE.map(([mark, text], i) => (
           <li key={i} className={i < n ? 'on' : ''}>
@@ -109,10 +101,11 @@ function Trace() {
   )
 }
 
-function Section({ n, title, children }) {
+function Section({ n, title, lede, children }) {
   return (
     <section>
       <h2><span>{String(n).padStart(2, '0')}</span>{title}</h2>
+      {lede && <p className="lede">{lede}</p>}
       {children}
     </section>
   )
@@ -122,10 +115,9 @@ export default function App() {
   return (
     <>
       <header className="nav">
-        <a className="brand" href="/">[enclox]</a>
+        <a className="brand" href="./">[enclox]</a>
         <nav>
-          <a href={`${REPO}/blob/master/docs/code-flow.md`}>docs</a>
-          <a href={`${REPO}/commits/master`}>changelog</a>
+          <a href="#how">how it works</a>
           <a href={REPO}>github</a>
         </nav>
       </header>
@@ -133,39 +125,79 @@ export default function App() {
       <main>
         <div className="hero">
           <div className="frame"><Logo /></div>
-          <p className="tagline">YOUR OWN CLOUD, IN ONE BINARY</p>
+          <p className="tagline">A SELF-LEARNING LAYER FOR COMPANY SOFTWARE</p>
           <p className="copy">
-            Enclox is a self-hosted cloud: IAM, object storage and serverless functions served by a single Rust
-            process. Functions run sealed inside Firecracker microVMs, on hardware you own.
+            Enclox learns where a team loses time, has an agent build the tool, deploys it behind the company login
+            inside the company’s own network, and learns whether it helped.
           </p>
-          <Install />
+          <div className="line prompt"><code>deploy ./weekly-tracker</code></div>
         </div>
 
-        <Section n={1} title="services">
+        <Section n={1} title="the problem" lede="Building a tool takes an hour. Knowing what to build, and whether it worked, still takes guesswork.">
           <ul className="grid">
-            {SERVICES.map(([name, text]) => (
-              <li key={name}>
-                <h3>{name}</h3>
+            {PROBLEMS.map(([title, text]) => (
+              <li key={title}>
+                <h3>{title}</h3>
                 <p>{text}</p>
               </li>
             ))}
           </ul>
         </Section>
 
-        <Section n={2} title="a request, end to end">
-          <p className="lede">
-            Identity comes from the transport, never from the payload. A guest can only reach the host through
-            vsock, and only as its function’s execution role.
+        <Section n={2} title="the loop" lede="See where time goes, build the tool, share it, and learn whether it helped.">
+          <ol className="grid loop four">
+            {LOOP.map(([step, text, status], i) => (
+              <li key={step}>
+                <span className="idx">{String(i + 1).padStart(2, '0')}</span>
+                <h3>{step}</h3>
+                <p>{text}</p>
+                <span className="tag">{status}</span>
+              </li>
+            ))}
+          </ol>
+        </Section>
+
+        <Section n={3} title="how it works" lede="We run the control plane. You run the compute.">
+          <div className="split" id="how">
+            <div>
+              <h3>we host</h3>
+              <ul className="ticks">{WE_HOST.map(t => <li key={t}>{t}</li>)}</ul>
+            </div>
+            <div>
+              <h3>you host</h3>
+              <ul className="ticks">{YOU_HOST.map(t => <li key={t}>{t}</li>)}</ul>
+            </div>
+          </div>
+          <p className="note">
+            We see metadata only: who deployed, who opened what, and when. Early pilots run on a node we host and move
+            in-house later.
           </p>
+        </Section>
+
+        <Section n={4} title="the node" lede="Every app is sealed in its own Firecracker microVM, with its own user, a memory cap, and no network.">
+          <ul className="stats">
+            {STATS.map(([value, label]) => (
+              <li key={label}><b>{value}</b><span>{label}</span></li>
+            ))}
+          </ul>
           <Trace />
         </Section>
 
-        <Section n={3} title="write a function">
-          <pre className="code">{HANDLER}</pre>
+        <Section n={5} title="where this goes" lede="From a place to run AI-built apps to a layer that learns what a company needs.">
+          <ol className="grid loop four">
+            {STAGES.map(([stage, text], i) => (
+              <li key={stage}>
+                <span className="idx">{String(i + 1).padStart(2, '0')}</span>
+                <h3>{stage}</h3>
+                <p>{text}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="note">Each stage starts only when customers ask for it.</p>
         </Section>
 
         <p className="status">
-          <span className="dot" /> Pre-release. Linux with KVM. Built in the open.
+          <span className="dot" /> Early pilots. The runtime works today; login, sharing and the directory are next.
         </p>
       </main>
 
