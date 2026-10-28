@@ -84,6 +84,88 @@ function Logo() {
   )
 }
 
+// Inside one node, after the big-picture diagram in self-host-AWS docs/code-flow.md.
+// Boxes are [x, y, label, detail] in a 880×430 viewBox, each 150×44.
+const NODES = {
+  web: [10, 50, 'browser / curl', 'via your TLS proxy'],
+  cli: [10, 170, 'enclox-api', 'signed requests'],
+  pub: [205, 50, 'public listener', 'access log'],
+  rate: [375, 50, 'rate limit', 'per client IP'],
+  url: [545, 50, 'Function URL', 'or custom domain'],
+  store: [715, 50, 'SQLite + blobs', 'in DATA_DIR'],
+  admin: [205, 170, 'admin listener', '127.0.0.1:4566'],
+  auth: [375, 170, 'SigV4 + IAM', 'policy per action'],
+  svc: [545, 170, 'services', 'APIs + state KV'],
+  pool: [715, 170, 'warm pool', 'snapshot clones'],
+  boot: [375, 350, 'bootstrap', 'your function'],
+  rt: [545, 350, 'Runtime API', '127.0.0.1:9001'],
+  agent: [715, 350, 'agent · PID 1', 'vsock 1000 / 1001'],
+}
+const center = (id) => [NODES[id][0] + 75, NODES[id][1] + 22]
+
+// [node, caption]: one Function URL request into a microVM and back, then one signed admin call.
+const FLOW = [
+  ['web', 'A request arrives on a Function URL from the internet.'],
+  ['pub', 'The public listener logs it,'],
+  ['rate', 'and rate-limits each client IP.'],
+  ['url', 'The URL names a function, which takes a concurrency slot.'],
+  ['pool', 'The pool lends a warm microVM, or restores one from its post-init snapshot.'],
+  ['agent', 'Over vsock port 1000, the host asks the agent, PID 1 in the VM, to invoke.'],
+  ['rt', 'The agent queues the event on the Lambda Runtime API,'],
+  ['boot', 'and your bootstrap picks it up. The VM has no network device.'],
+  ['agent', 'To read its state, the function goes back through the agent, out on vsock port 1001,'],
+  ['svc', 'to a socket only this VM can open: identity comes from the transport, never the payload.'],
+  ['store', 'Its keys, like everything else, live in SQLite on your disk.'],
+  ['web', 'The response goes back out the way it came.'],
+  ['cli', 'An admin call, signed with an access key.'],
+  ['admin', 'The admin listener is on 127.0.0.1 unless you choose otherwise.'],
+  ['auth', 'SigV4 names the caller; IAM policies allow or deny each action.'],
+  ['svc', 'IAM, Buckets or Lambda handles it,'],
+  ['store', 'and writes to the same SQLite and blob files.'],
+]
+// Lines between the boxes the flow passes through.
+const EDGES = [['web', 'pub'], ['pub', 'rate'], ['rate', 'url'], ['url', 'pool'], ['pool', 'agent'], ['agent', 'rt'], ['rt', 'boot'],
+  ['agent', 'svc'], ['svc', 'store'], ['cli', 'admin'], ['admin', 'auth'], ['auth', 'svc']]
+
+function NodeDiagram() {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const t = setTimeout(() => setStep(s => (s + 1) % FLOW.length), 1900)
+    return () => clearTimeout(t)
+  }, [step])
+  const [node, caption] = FLOW[step]
+  const [dx, dy] = center(node)
+  return (
+    <figure className="diagram">
+      <div className="diagram-scroll">
+        <svg viewBox="0 0 880 430" role="img"
+          aria-label="Inside a node: requests reach a public or an admin listener, pass rate limiting or SigV4 and IAM checks, and reach the services and storage. Functions run in microVMs from a warm pool; the host talks to the agent inside each VM over vsock, and the agent hands events to your bootstrap.">
+          <rect className="frame-box" x="190" y="20" width="685" height="230" />
+          <text className="frame-label" x="200" y="38">host · one enclox process</text>
+          <rect className="frame-box" x="360" y="320" width="515" height="100" />
+          <text className="frame-label" x="370" y="338">microVM · Firecracker + jailer, one per app</text>
+          {EDGES.map(([a, b]) => {
+            const [x1, y1] = center(a), [x2, y2] = center(b)
+            return <line key={a + b} className="edge" x1={x1} y1={y1} x2={x2} y2={y2} />
+          })}
+          <text className="edge-label" x="800" y="285">vsock 1000 ↓</text>
+          <text className="edge-label" x="625" y="285">vsock 1001 ↑</text>
+          {Object.entries(NODES).map(([id, [x, y, label, detail]]) => (
+            <g key={id} className={id === node ? 'node on' : 'node'}>
+              <rect x={x} y={y} width="150" height="44" />
+              <text className="node-label" x={x + 12} y={y + 19}>{label}</text>
+              <text className="node-detail" x={x + 12} y={y + 35}>{detail}</text>
+            </g>
+          ))}
+          <circle className="packet" r="6" style={{ transform: `translate(${dx}px, ${dy}px)` }} />
+        </svg>
+      </div>
+      <figcaption><span className="idx">{String(step + 1).padStart(2, '0')}</span>{caption}</figcaption>
+    </figure>
+  )
+}
+
 function Trace() {
   // Reveal one line at a time, then hold and loop.
   const [n, setN] = useState(0)
@@ -189,6 +271,8 @@ export default function App() {
             We see metadata only: who deployed, who opened what, and when. Early pilots run on a node we host and move
             in-house later.
           </p>
+          <h3 className="sub">inside a node</h3>
+          <NodeDiagram />
         </Section>
 
         <Section n={5} title="the node" lede="Every app is sealed in its own Firecracker microVM, with its own user, a memory cap, and no network.">
