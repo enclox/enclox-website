@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 
-const REPO = 'https://github.com/enclox/self-host-AWS'
 
 // ANSI Shadow lettering. Full blocks are lit; the box-drawing shadow stays dim.
 const LOGO = [
@@ -11,6 +10,9 @@ const LOGO = [
   '███████╗██║ ╚████║╚██████╗███████╗╚██████╔╝██╔╝ ██╗',
   '╚══════╝╚═╝  ╚═══╝ ╚═════╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝',
 ]
+
+// Dummy apps for the ticker under the hero.
+const APPS = ['weekly-tracker', 'invoice-scanner', 'support-bot', 'expense-report', 'standup-digest', 'contract-search', 'shift-planner', 'onboarding-checklist']
 
 const PROBLEMS = [
   ['Teams don’t know what to build', 'Time sinks are visible only to the people living them. Nobody reads the pattern across the team.'],
@@ -201,10 +203,9 @@ export default function App() {
   return (
     <>
       <header className="nav">
-        <a className="brand" href="./">[enclox]</a>
+        <a className="brand" href="./"><img src="favicon.svg" alt="" width="18" height="18" />[enclox]</a>
         <nav>
           <a href="#how">how it works</a>
-          <a href={REPO}>github</a>
         </nav>
       </header>
 
@@ -216,7 +217,15 @@ export default function App() {
             Enclox learns where a team loses time, has an agent build the tool, deploys it behind the company login
             inside the company’s own network, and learns whether it helped.
           </p>
-          <div className="line prompt"><code>deploy ./weekly-tracker</code></div>
+          <ul className="chips">
+            <li>self-hosted</li>
+            <li>one microVM per app</li>
+            <li>metadata only</li>
+          </ul>
+        </div>
+
+        <div className="ticker" aria-hidden="true">
+          <div>{[...APPS, ...APPS].map((app, i) => <span key={i}>{app}</span>)}</div>
         </div>
 
         <Section n={1} title="the problem" lede="Building a tool takes an hour. Knowing what to build, and whether it worked, still takes guesswork.">
@@ -324,8 +333,8 @@ export default function App() {
       </main>
 
       <footer>
-        <span>enclox</span>
-        <a href={REPO}>source</a>
+        <span>[enclox]</span>
+        <span>sealed, self-hosted, yours · 2026</span>
       </footer>
     </>
   )

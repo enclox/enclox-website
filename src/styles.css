@@ -12,6 +12,17 @@
   --mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
   --sans: 'Geist Variable', system-ui, sans-serif;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* corner brackets: the enclosure, used around the logo and every boxed block */
+  --c: var(--amber-dim);
+  --brackets:
+    linear-gradient(var(--c), var(--c)) top left / 14px 1px,
+    linear-gradient(var(--c), var(--c)) top left / 1px 14px,
+    linear-gradient(var(--c), var(--c)) top right / 14px 1px,
+    linear-gradient(var(--c), var(--c)) top right / 1px 14px,
+    linear-gradient(var(--c), var(--c)) bottom left / 14px 1px,
+    linear-gradient(var(--c), var(--c)) bottom left / 1px 14px,
+    linear-gradient(var(--c), var(--c)) bottom right / 14px 1px,
+    linear-gradient(var(--c), var(--c)) bottom right / 1px 14px;
   color-scheme: dark;
 }
 
@@ -41,7 +52,7 @@ code, pre, button, .nav, h2, h3, .tagline, .status, footer { font-family: var(--
   backdrop-filter: blur(8px);
   border-bottom: 1px dashed var(--line);
 }
-.brand { font-weight: 700; letter-spacing: .06em; }
+.brand { display: flex; align-items: center; gap: .55rem; font-weight: 700; letter-spacing: .06em; }
 .brand:hover { color: var(--amber); }
 .nav nav { display: flex; gap: 1.25rem; }
 .nav nav a { color: var(--dim); transition: color 150ms; }
@@ -68,17 +79,13 @@ main {
 .frame {
   position: relative; padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 4vw, 2.75rem);
   max-width: 100%;
-  --c: var(--amber-dim);
-  background:
-    linear-gradient(var(--c), var(--c)) top left / 18px 1px,
-    linear-gradient(var(--c), var(--c)) top left / 1px 18px,
-    linear-gradient(var(--c), var(--c)) top right / 18px 1px,
-    linear-gradient(var(--c), var(--c)) top right / 1px 18px,
-    linear-gradient(var(--c), var(--c)) bottom left / 18px 1px,
-    linear-gradient(var(--c), var(--c)) bottom left / 1px 18px,
-    linear-gradient(var(--c), var(--c)) bottom right / 18px 1px,
-    linear-gradient(var(--c), var(--c)) bottom right / 1px 18px;
+  background: var(--brackets), radial-gradient(closest-side, rgb(245 165 36 / .08), transparent);
   background-repeat: no-repeat;
+}
+.grid, .split, .diagram, .term { position: relative; }
+.grid::before, .split::before, .diagram::before, .term::before {
+  content: ''; position: absolute; inset: -6px; pointer-events: none;
+  background: var(--brackets); background-repeat: no-repeat;
 }
 .logo {
   margin: 0;
@@ -99,7 +106,20 @@ main {
 }
 .line code { min-width: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
 .line code::before { content: '$ '; color: var(--amber); }
-.prompt code::after { content: ''; display: inline-block; width: .55em; height: 1em; margin-left: .3em; vertical-align: -.15em; background: var(--amber); animation: blink 1s steps(1) infinite; }
+
+.chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem 1.25rem; font: .75rem var(--mono); color: var(--dim); }
+.chips li::before { content: '[ '; color: var(--amber); }
+.chips li::after { content: ' ]'; color: var(--amber); }
+
+/* running apps, scrolling under the hero */
+.ticker {
+  overflow: hidden; padding: .7rem 0; border-top: 1px dashed var(--line);
+  font: .75rem var(--mono); color: var(--dim);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.ticker div { display: flex; gap: 2.5rem; width: max-content; animation: scroll 40s linear infinite; }
+.ticker span::before { content: '● '; color: var(--ok); }
+@keyframes scroll { to { transform: translateX(calc(-50% - 1.25rem)); } }
 
 /* sections */
 section { padding: 4.5rem 0; border-top: 1px dashed var(--line); }
