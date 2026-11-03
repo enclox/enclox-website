@@ -15,17 +15,17 @@ const LOGO = [
 const APPS = ['weekly-tracker', 'invoice-scanner', 'support-bot', 'expense-report', 'standup-digest', 'contract-search', 'shift-planner', 'onboarding-checklist']
 
 const PROBLEMS = [
-  ['Teams don’t know what to build', 'Time sinks are visible only to the people living them. Nobody reads the pattern across the team.'],
-  ['Tools stall at sharing', 'A builder’s tool lives on a laptop or a personal account. Colleagues can’t open it safely, and IT can’t see it.'],
-  ['Nobody learns what worked', 'Tools get abandoned with no record of whether they helped, so the next one is built blind.'],
+  ['Tools run where IT can’t see', 'A builder’s tool lives on a laptop or a personal cloud account. Nobody knows it exists until something goes wrong.'],
+  ['Data ends up where it shouldn’t', 'To be useful, a tool needs company data. So copies of spreadsheets, invoices and customer records leave the network.'],
+  ['Access is hard to take back', 'Keys get pasted into code and shared links never expire. When someone leaves, nobody knows what they can still reach.'],
 ]
 
-// [step, text, status]
-const LOOP = [
-  ['see', 'Learns where a team’s time goes, from usage metadata the company chooses to share.', 'designed'],
-  ['build', 'An agent builds the tool, and one command deploys it.', 'runtime built'],
-  ['share', 'Deploys inside the company’s network behind its login, and shares with the people who need it most.', 'next'],
-  ['learn', 'Reads usage and feedback to judge whether the tool helped, then shares it wider or retires it.', 'designed'],
+// [layer, text, status]
+const LAYERS = [
+  ['your hardware', 'Apps run on a node on your servers or your cloud account, inside your own network.', 'built'],
+  ['your login', 'Every app sits behind your company’s Google or Microsoft login. Only the people you share it with can open it.', 'next'],
+  ['its own microVM', 'Each app is sealed in its own Firecracker microVM, with no network unless you approve it.', 'built'],
+  ['scoped roles', 'No keys in app code. Each app’s role decides which files it can touch, and revoking it cuts off running apps at once.', 'built'],
 ]
 
 const WE_HOST = [
@@ -34,7 +34,6 @@ const WE_HOST = [
   'Relay for access from anywhere',
   'Audit log and kill switch',
   'Signed updates and patches',
-  'Recommendations from usage metadata only',
 ]
 
 const YOU_HOST = [
@@ -42,11 +41,10 @@ const YOU_HOST = [
   'Each app in its own microVM',
   'No network by default, with an approved list',
   'Each app’s data on your node',
-  'Usage learning runs on your node by default',
 ]
 
 const PILLARS = [
-  ['local', 'Apps, their data, and usage learning stay on your node, inside your network. Nothing leaves unless you allow it.'],
+  ['local', 'Apps and their data stay on your node, inside your network. Nothing leaves unless you allow it.'],
   ['self-hostable', 'Run the node on your hardware or your cloud account, and the control plane too if you want everything in-house.'],
   ['completely manageable', 'Every app, user, permission, and network rule is yours to inspect and change, with an audit log and a kill switch.'],
 ]
@@ -71,13 +69,6 @@ const TRACE = [
   ['·', 'GET invoices/inv-0412.jpg  as role invoice-scanner'],
   ['·', 'PUT invoices/inv-0412.json'],
   ['←', '200 OK  Acme Supplies · $1,240.00'],
-]
-
-const STAGES = [
-  ['run', 'Deploy, share, and govern apps built with any agent.'],
-  ['learn', 'With consent, usage metadata shows where teams lose time and which tools earn their keep.'],
-  ['build', 'Enclox proposes the next tool, has an agent build it, and shares it with the people who need it.'],
-  ['agents', 'Scheduled agents run in the same isolated place, with scoped credentials and an audit trail.'],
 ]
 
 function Logo() {
@@ -212,15 +203,15 @@ export default function App() {
       <main>
         <div className="hero">
           <div className="frame"><Logo /></div>
-          <p className="tagline">A SELF-LEARNING LAYER FOR COMPANY SOFTWARE</p>
+          <p className="tagline">COMPANY APPS ON HARDWARE YOU CONTROL</p>
           <p className="copy">
-            Enclox learns where a team loses time, has an agent build the tool, deploys it behind the company login
-            inside the company’s own network, and learns whether it helped.
+            Building an app takes an hour. Enclox runs it on your own servers, inside your own network, behind your
+            company login, with each app sealed in its own microVM.
           </p>
           <ul className="chips">
             <li>self-hosted</li>
             <li>one microVM per app</li>
-            <li>metadata only</li>
+            <li>no keys in code</li>
           </ul>
         </div>
 
@@ -228,7 +219,7 @@ export default function App() {
           <div>{[...APPS, ...APPS].map((app, i) => <span key={i}>{app}</span>)}</div>
         </div>
 
-        <Section n={1} title="the problem" lede="Building a tool takes an hour. Knowing what to build, and whether it worked, still takes guesswork.">
+        <Section n={1} title="the problem" lede="Building a tool takes an hour. Knowing where it runs, and what it can reach, is the hard part.">
           <ul className="grid">
             {PROBLEMS.map(([title, text]) => (
               <li key={title}>
@@ -239,12 +230,12 @@ export default function App() {
           </ul>
         </Section>
 
-        <Section n={2} title="the loop" lede="See where time goes, build the tool, share it, and learn whether it helped.">
+        <Section n={2} title="sealed by default" lede="Every app is locked down at four layers, before anyone opens it.">
           <ol className="grid loop four">
-            {LOOP.map(([step, text, status], i) => (
-              <li key={step}>
+            {LAYERS.map(([layer, text, status], i) => (
+              <li key={layer}>
                 <span className="idx">{String(i + 1).padStart(2, '0')}</span>
-                <h3>{step}</h3>
+                <h3>{layer}</h3>
                 <p>{text}</p>
                 <span className="tag">{status}</span>
               </li>
@@ -312,19 +303,6 @@ export default function App() {
               </li>
             ))}
           </ul>
-        </Section>
-
-        <Section n={6} title="where this goes" lede="From a place to run AI-built apps to a layer that learns what a company needs.">
-          <ol className="grid loop four">
-            {STAGES.map(([stage, text], i) => (
-              <li key={stage}>
-                <span className="idx">{String(i + 1).padStart(2, '0')}</span>
-                <h3>{stage}</h3>
-                <p>{text}</p>
-              </li>
-            ))}
-          </ol>
-          <p className="note">Each stage starts only when customers ask for it.</p>
         </Section>
 
         <p className="status">
